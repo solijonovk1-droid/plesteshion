@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Save, Store, Clock, DollarSign, Bell, Trash2, PlusCircle } from 'lucide-react'
+import { Save, Store, Clock, DollarSign, Bell, Trash2, PlusCircle, Lock } from 'lucide-react'
 
 export default function Settings({ menuItems, addMenuItem, removeMenuItem }) {
     const [newProduct, setNewProduct] = useState({ name: '', price: '' })
@@ -13,9 +13,11 @@ export default function Settings({ menuItems, addMenuItem, removeMenuItem }) {
         warnMinutes: '5',
         autoNotify: true,
     })
+    const [pin, setPin] = useState(() => localStorage.getItem('lockPin') || '7777')
     const [saved, setSaved] = useState(false)
 
     const handleSave = () => {
+        localStorage.setItem('lockPin', pin)
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
     }
@@ -107,6 +109,28 @@ export default function Settings({ menuItems, addMenuItem, removeMenuItem }) {
                     <div>
                         <label className="block text-slate-400 text-xs mb-1">Ogohlantirish (daqiqa oldin)</label>
                         <input type="number" value={settings.warnMinutes} onChange={e => setSettings(s => ({ ...s, warnMinutes: e.target.value }))} className={inputCls} />
+                    </div>
+                </div>
+
+                {/* Security PIN Settings */}
+                <div className="rounded-2xl bg-[#1a1630] border border-[#2d2556] p-6">
+                    <div className="flex items-center gap-2 mb-5">
+                        <Lock size={16} className="text-violet-400" />
+                        <h2 className="text-white font-semibold">Tizimni qulflash PIN kodi</h2>
+                    </div>
+                    <div>
+                        <label className="block text-slate-400 text-xs mb-1">Operator kirish PIN kodi (4 ta raqam)</label>
+                        <input 
+                            type="text" 
+                            maxLength={4}
+                            value={pin} 
+                            onChange={e => {
+                                const val = e.target.value.replace(/\D/g, '')
+                                setPin(val)
+                            }} 
+                            className={inputCls} 
+                            placeholder="7777"
+                        />
                     </div>
                 </div>
 

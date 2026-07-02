@@ -10,7 +10,7 @@ const navItems = [
     { id: 'settings', label: 'Sozlamalar', icon: Settings },
 ]
 
-export default function Sidebar({ activePage, setActivePage }) {
+export default function Sidebar({ activePage, setActivePage, onLock }) {
     return (
         <aside className="w-64 h-full bg-[#13102a] border-r border-[#2d2556] flex flex-col">
             {/* Logo */}
@@ -47,7 +47,10 @@ export default function Sidebar({ activePage, setActivePage }) {
 
             {/* Logout */}
             <div className="px-4 py-6 border-t border-[#2d2556]">
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-900/30 hover:text-red-400 transition-all duration-200 cursor-pointer">
+                <button 
+                    onClick={onLock}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-900/30 hover:text-red-400 transition-all duration-200 cursor-pointer"
+                >
                     <LogOut size={18} />
                     Chiqish
                 </button>
