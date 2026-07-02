@@ -8,12 +8,10 @@ import Settings from './components/Settings'
 import Statistics from './components/Statistics'
 import Employer from './components/Employer'
 import Utilities from './components/Utilities'
-import LockScreen from './components/LockScreen'
 import './index.css'
 
 export default function App() {
   const [activePage, setActivePage] = useState('dashboard')
-  const [isLocked, setIsLocked] = useState(false)
   
   // Xonalar holati
   const [freeRooms, setFreeRooms] = useState([])
@@ -291,13 +289,15 @@ export default function App() {
     }
   }
 
-  if (isLocked) {
-    return <LockScreen onUnlock={() => setIsLocked(false)} />
+  const handleLogout = () => {
+    if (window.confirm("Tizimdan chiqishni xohlaysizmi?")) {
+      window.location.href = "about:blank"
+    }
   }
 
   return (
     <div className="flex h-screen bg-[#0f0c1e] overflow-hidden">
-      <Sidebar activePage={activePage} setActivePage={setActivePage} onLock={() => setIsLocked(true)} />
+      <Sidebar activePage={activePage} setActivePage={setActivePage} onLogout={handleLogout} />
       <main className="flex-1 overflow-y-auto">
         {renderPage()}
       </main>
