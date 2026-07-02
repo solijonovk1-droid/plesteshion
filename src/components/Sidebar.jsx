@@ -1,4 +1,4 @@
-import { LayoutDashboard, CalendarCheck, Users, Settings, Gamepad2, LogOut, BarChart3, Briefcase, Zap } from 'lucide-react'
+import { LayoutDashboard, CalendarCheck, Users, Settings, Gamepad2, BarChart3, Briefcase, Zap } from 'lucide-react'
 
 const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -10,7 +10,7 @@ const navItems = [
     { id: 'settings', label: 'Sozlamalar', icon: Settings },
 ]
 
-export default function Sidebar({ activePage, setActivePage, onLogout }) {
+export default function Sidebar({ activePage, setActivePage }) {
     return (
         <aside className="w-64 h-full bg-[#13102a] border-r border-[#2d2556] flex flex-col">
             {/* Logo */}
@@ -44,17 +44,6 @@ export default function Sidebar({ activePage, setActivePage, onLogout }) {
                     )
                 })}
             </nav>
-
-            {/* Logout */}
-            <div className="px-4 py-6 border-t border-[#2d2556]">
-                <button 
-                    onClick={onLogout}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-900/30 hover:text-red-400 transition-all duration-200 cursor-pointer"
-                >
-                    <LogOut size={18} />
-                    Chiqish
-                </button>
-            </div>
         </aside>
     )
 }

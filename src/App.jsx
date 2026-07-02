@@ -8,17 +8,15 @@ import Settings from './components/Settings'
 import Statistics from './components/Statistics'
 import Employer from './components/Employer'
 import Utilities from './components/Utilities'
-import Login from './components/Login'
 import './index.css'
 
 export default function App() {
   const [activePage, setActivePage] = useState('dashboard')
-  const [user, setUser] = useState(null)
-  
+
   // Xonalar holati
   const [freeRooms, setFreeRooms] = useState([])
   const [activeRooms, setActiveRooms] = useState([])
-  
+
   // Mahsulotlar (Menyu)
   const [menuItems, setMenuItems] = useState([])
 
@@ -29,49 +27,19 @@ export default function App() {
   // Loading holati
   const [loading, setLoading] = useState(true)
 
-  // ─── Auth holati ──────────────────────────────────────────────
   useEffect(() => {
-    // Birinchi session tekshiruvi
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user ?? null
-      setUser(u)
-      if (u) {
-        loadAllData()
-      } else {
-        setLoading(false)
-      }
-    })
-
-    // Auth o'zgarishlarini kuzatish (faqat logout uchun)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setFreeRooms([])
-        setActiveRooms([])
-        setMenuItems([])
-        setStaff([])
-        setExpenses([])
-        setLoading(false)
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    loadAllData()
   }, [])
 
   const loadAllData = async () => {
     setLoading(true)
     try {
-      const [roomsRes, sessionsRes, menuRes, staffRes, expRes] = await Promise.allSettled([
-        supabase.from('rooms').select('*').order('id'),
-        supabase.from('sessions').select('*').order('id'),
-        supabase.from('menu_items').select('*').order('id'),
-        supabase.from('staff').select('*').order('id'),
-        supabase.from('expenses').select('*').order('created_at', { ascending: false })
-      ])
+      const { data: roomsData } = await supabase.from('rooms').select('*').order('id')
+      if (roomsData) setFreeRooms(roomsData)
 
-      if (roomsRes.value?.data) setFreeRooms(roomsRes.value.data)
-      if (sessionsRes.value?.data) {
-        setActiveRooms(sessionsRes.value.data.map(s => ({
+      const { data: sessionsData } = await supabase.from('sessions').select('*').order('id')
+      if (sessionsData) {
+        setActiveRooms(sessionsData.map(s => ({
           id: s.id,
           name: s.room_name,
           type: s.room_type,
@@ -85,9 +53,15 @@ export default function App() {
           roomId: s.room_id
         })))
       }
-      if (menuRes.value?.data) setMenuItems(menuRes.value.data)
-      if (staffRes.value?.data) setStaff(staffRes.value.data)
-      if (expRes.value?.data) setExpenses(expRes.value.data)
+
+      const { data: menuData } = await supabase.from('menu_items').select('*').order('id')
+      if (menuData) setMenuItems(menuData)
+
+      const { data: staffData } = await supabase.from('staff').select('*').order('id')
+      if (staffData) setStaff(staffData)
+
+      const { data: expData } = await supabase.from('expenses').select('*').order('created_at', { ascending: false })
+      if (expData) setExpenses(expData)
 
     } catch (err) {
       console.error('Supabase yuklash xatosi:', err)
@@ -98,7 +72,7 @@ export default function App() {
 
   // ─── Xonalar uchun CRUD ───────────────────────────────────────
   const addFreeRoom = async (room) => {
-    const { data, error } = await supabase.from('rooms').insert([{
+    const { data } = await supabase.from('rooms').insert([{
       name: room.name,
       type: room.type,
       price: room.price,
@@ -131,7 +105,7 @@ export default function App() {
       orders: []
     }
 
-    const { data, error } = await supabase.from('sessions').insert([sessionData]).select()
+    const { data } = await supabase.from('sessions').insert([sessionData]).select()
     if (data) {
       setActiveRooms(prev => [...prev, {
         id: data[0].id,
@@ -146,18 +120,15 @@ export default function App() {
         orders: [],
         roomId: room.id
       }])
-      // Xonani bo'sh ro'yxatdan o'chirish
       await supabase.from('rooms').delete().eq('id', room.id)
       setFreeRooms(prev => prev.filter(r => r.id !== room.id))
     }
   }
 
   const stopSession = async (sessionId, roomData) => {
-    // Seansni o'chirish
     await supabase.from('sessions').delete().eq('id', sessionId)
     setActiveRooms(prev => prev.filter(r => r.id !== sessionId))
 
-    // Xonani qaytarish
     const { data } = await supabase.from('rooms').insert([{
       name: roomData.name,
       type: roomData.type,
@@ -176,18 +147,13 @@ export default function App() {
     const existingIdx = (session.orders || []).findIndex(o => o.id === item.id)
     let newOrders = [...(session.orders || [])]
     if (existingIdx > -1) {
-      newOrders[existingIdx] = {
-        ...newOrders[existingIdx],
-        quantity: newOrders[existingIdx].quantity + item.quantity
-      }
+      newOrders[existingIdx] = { ...newOrders[existingIdx], quantity: newOrders[existingIdx].quantity + item.quantity }
     } else {
       newOrders.push(item)
     }
 
     await supabase.from('sessions').update({ orders: newOrders }).eq('id', sessionId)
-    setActiveRooms(prev => prev.map(r =>
-      r.id === sessionId ? { ...r, orders: newOrders } : r
-    ))
+    setActiveRooms(prev => prev.map(r => r.id === sessionId ? { ...r, orders: newOrders } : r))
   }
 
   // ─── To'lov saqlash ───────────────────────────────────────────
@@ -197,10 +163,7 @@ export default function App() {
 
   // ─── Menyu CRUD ───────────────────────────────────────────────
   const addMenuItem = async (item) => {
-    const { data } = await supabase.from('menu_items').insert([{
-      name: item.name,
-      price: item.price
-    }]).select()
+    const { data } = await supabase.from('menu_items').insert([{ name: item.name, price: item.price }]).select()
     if (data) setMenuItems(prev => [...prev, data[0]])
   }
 
@@ -212,11 +175,8 @@ export default function App() {
   // ─── Xodimlar CRUD ───────────────────────────────────────────
   const addStaff = async (s) => {
     const { data } = await supabase.from('staff').insert([{
-      name: s.name,
-      role: s.role,
-      phone: s.phone,
-      email: s.name.toLowerCase().replace(' ', '.') + '@psclub.uz',
-      status: 'Ishda'
+      name: s.name, role: s.role, phone: s.phone,
+      email: s.name.toLowerCase().replace(' ', '.') + '@psclub.uz', status: 'Ishda'
     }]).select()
     if (data) setStaff(prev => [...prev, data[0]])
   }
@@ -229,11 +189,8 @@ export default function App() {
   // ─── Xarajatlar CRUD ─────────────────────────────────────────
   const addExpense = async (exp) => {
     const { data } = await supabase.from('expenses').insert([{
-      staff_id: exp.staffId,
-      staff_name: exp.staffName,
-      amount: exp.amount,
-      reason: exp.reason,
-      date: exp.date
+      staff_id: exp.staffId, staff_name: exp.staffName,
+      amount: exp.amount, reason: exp.reason, date: exp.date
     }]).select()
     if (data) setExpenses(prev => [data[0], ...prev])
   }
@@ -251,14 +208,14 @@ export default function App() {
 
   const renderPage = () => {
     switch (activePage) {
-      case 'dashboard': 
+      case 'dashboard':
         return (
-          <Dashboard 
-            freeRooms={freeRooms} 
+          <Dashboard
+            freeRooms={freeRooms}
             setFreeRooms={setFreeRooms}
             addFreeRoom={addFreeRoom}
             removeFreeRoom={removeFreeRoom}
-            activeRooms={activeRooms} 
+            activeRooms={activeRooms}
             setActiveRooms={setActiveRooms}
             startSession={startSession}
             stopSession={stopSession}
@@ -273,31 +230,31 @@ export default function App() {
       case 'clients': return <Clients />
       case 'utilities': return <Utilities />
       case 'employer': return (
-        <Employer 
-          staff={staff} 
+        <Employer
+          staff={staff}
           setStaff={setStaff}
           addStaff={addStaff}
           removeStaff={removeStaff}
-          expenses={expenses} 
+          expenses={expenses}
           setExpenses={setExpenses}
           addExpense={addExpense}
         />
       )
       case 'settings': return (
-        <Settings 
-          menuItems={menuItems} 
+        <Settings
+          menuItems={menuItems}
           setMenuItems={setMenuItems}
           addMenuItem={addMenuItem}
           removeMenuItem={removeMenuItem}
         />
       )
       default: return (
-        <Dashboard 
-          freeRooms={freeRooms} 
+        <Dashboard
+          freeRooms={freeRooms}
           setFreeRooms={setFreeRooms}
           addFreeRoom={addFreeRoom}
           removeFreeRoom={removeFreeRoom}
-          activeRooms={activeRooms} 
+          activeRooms={activeRooms}
           setActiveRooms={setActiveRooms}
           startSession={startSession}
           stopSession={stopSession}
@@ -310,26 +267,9 @@ export default function App() {
     }
   }
 
-  const handleLogout = async () => {
-    if (window.confirm("Tizimdan chiqishni xohlaysizmi?")) {
-      await supabase.auth.signOut()
-    }
-  }
-
-  if (!user) {
-    return (
-      <Login
-        onLoginSuccess={(u) => {
-          setUser(u)
-          loadAllData()
-        }}
-      />
-    )
-  }
-
   return (
     <div className="flex h-screen bg-[#0f0c1e] overflow-hidden">
-      <Sidebar activePage={activePage} setActivePage={setActivePage} onLogout={handleLogout} />
+      <Sidebar activePage={activePage} setActivePage={setActivePage} />
       <main className="flex-1 overflow-y-auto">
         {renderPage()}
       </main>
