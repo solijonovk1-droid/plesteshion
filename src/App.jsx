@@ -8,10 +8,12 @@ import Settings from './components/Settings'
 import Statistics from './components/Statistics'
 import Employer from './components/Employer'
 import Utilities from './components/Utilities'
+import Login from './components/Login'
 import './index.css'
 
 export default function App() {
   const [activePage, setActivePage] = useState('dashboard')
+  const [user, setUser] = useState(null)
   
   // Xonalar holati
   const [freeRooms, setFreeRooms] = useState([])
@@ -29,7 +31,33 @@ export default function App() {
 
   // ─── Supabase dan ma'lumotlarni yuklash ───────────────────────
   useEffect(() => {
-    loadAllData()
+    // Sessionni tekshirish
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        loadAllData()
+      } else {
+        setLoading(false)
+      }
+    })
+
+    // Auth holatini eshitish
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        loadAllData()
+      } else {
+        // Log out bo'lganda statelarni tozalash
+        setFreeRooms([])
+        setActiveRooms([])
+        setMenuItems([])
+        setStaff([])
+        setExpenses([])
+        setLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const loadAllData = async () => {
@@ -289,10 +317,14 @@ export default function App() {
     }
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (window.confirm("Tizimdan chiqishni xohlaysizmi?")) {
-      window.location.href = "about:blank"
+      await supabase.auth.signOut()
     }
+  }
+
+  if (!user) {
+    return <Login onLoginSuccess={(u) => setUser(u)} />
   }
 
   return (
