@@ -1,13 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CalendarCheck, Clock, Plus, X } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
 const ROOMS = ['VIP 1', 'VIP 2', 'VIP 3', 'Xona 1', 'Xona 2', 'Xona 3', 'Xona 4', 'Xona 5', 'Xona 6']
-
-const INITIAL = [
-    { id: 1, room: 'VIP 1', client: 'Alisher', date: '2026-05-14', time: '18:00', hours: 2, status: 'Kutilmoqda' },
-    { id: 2, room: 'Xona 3', client: 'Bekzod', date: '2026-05-14', time: '20:00', hours: 1, status: 'Tasdiqlanmagan' },
-    { id: 3, room: 'VIP 2', client: 'Jasur', date: '2026-05-15', time: '14:00', hours: 3, status: 'Tasdiqlangan' },
-]
 
 const statusColor = {
     'Kutilmoqda': 'bg-amber-900/40 text-amber-400 border-amber-700/40',
@@ -16,15 +11,67 @@ const statusColor = {
 }
 
 export default function Booking() {
-    const [bookings, setBookings] = useState(INITIAL)
+    const [bookings, setBookings] = useState([])
     const [showForm, setShowForm] = useState(false)
     const [form, setForm] = useState({ room: ROOMS[0], client: '', date: '', time: '', hours: 1 })
+    const [loading, setLoading] = useState(true)
 
-    const handleAdd = () => {
+    useEffect(() => {
+        fetchBookings()
+    }, [])
+
+    const fetchBookings = async () => {
+        setLoading(true)
+        const { data, error } = await supabase
+            .from('bookings')
+            .select('*')
+            .order('id', { ascending: false })
+        if (data) {
+            setBookings(data)
+        }
+        setLoading(false)
+    }
+
+    const handleAdd = async () => {
         if (!form.client || !form.date || !form.time) return
-        setBookings(prev => [...prev, { ...form, id: Date.now(), status: 'Kutilmoqda' }])
+        const newBooking = {
+            room: form.room,
+            client: form.client,
+            date: form.date,
+            time: form.time,
+            hours: form.hours,
+            status: 'Kutilmoqda'
+        }
+        const { data, error } = await supabase
+            .from('bookings')
+            .insert([newBooking])
+            .select()
+        
+        if (data) {
+            setBookings(prev => [data[0], ...prev])
+        }
         setForm({ room: ROOMS[0], client: '', date: '', time: '', hours: 1 })
         setShowForm(false)
+    }
+
+    const handleDelete = async (id) => {
+        const { error } = await supabase
+            .from('bookings')
+            .delete()
+            .eq('id', id)
+        if (!error) {
+            setBookings(prev => prev.filter(x => x.id !== id))
+        }
+    }
+
+    const handleUpdateStatus = async (id, newStatus) => {
+        const { error } = await supabase
+            .from('bookings')
+            .update({ status: newStatus })
+            .eq('id', id)
+        if (!error) {
+            setBookings(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b))
+        }
     }
 
     return (
@@ -42,34 +89,52 @@ export default function Booking() {
                 </button>
             </div>
 
-            <div className="space-y-3">
-                {bookings.map(b => (
-                    <div key={b.id} className="rounded-2xl bg-[#1a1630] border border-[#2d2556] p-5 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center">
-                                <CalendarCheck size={18} className="text-white" />
+            {loading ? (
+                <div className="text-center py-10">
+                    <div className="w-8 h-8 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    <p className="text-slate-400 text-xs">Yuklanmoqda...</p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {bookings.map(b => (
+                        <div key={b.id} className="rounded-2xl bg-[#1a1630] border border-[#2d2556] p-5 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center">
+                                    <CalendarCheck size={18} className="text-white" />
+                                </div>
+                                <div>
+                                    <p className="text-white font-semibold">{b.room} · {b.client}</p>
+                                    <p className="text-slate-400 text-xs flex items-center gap-1 mt-0.5">
+                                        <Clock size={11} /> {b.date} soat {b.time} · {b.hours} soat
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-white font-semibold">{b.room} · {b.client}</p>
-                                <p className="text-slate-400 text-xs flex items-center gap-1 mt-0.5">
-                                    <Clock size={11} /> {b.date} soat {b.time} · {b.hours} soat
-                                </p>
+                            <div className="flex items-center gap-3">
+                                <select 
+                                    value={b.status} 
+                                    onChange={(e) => handleUpdateStatus(b.id, e.target.value)}
+                                    className={`text-xs px-2 py-1 rounded-full font-semibold border bg-transparent cursor-pointer outline-none ${statusColor[b.status]}`}
+                                >
+                                    <option value="Kutilmoqda" className="bg-[#1a1630] text-amber-400">Kutilmoqda</option>
+                                    <option value="Tasdiqlangan" className="bg-[#1a1630] text-emerald-400">Tasdiqlangan</option>
+                                    <option value="Tasdiqlanmagan" className="bg-[#1a1630] text-red-400">Tasdiqlanmagan</option>
+                                </select>
+                                <button
+                                    onClick={() => handleDelete(b.id)}
+                                    className="text-slate-500 hover:text-red-400 transition cursor-pointer"
+                                >
+                                    <X size={16} />
+                                </button>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <span className={`text-xs px-3 py-1.5 rounded-full font-semibold border ${statusColor[b.status]}`}>
-                                {b.status}
-                            </span>
-                            <button
-                                onClick={() => setBookings(prev => prev.filter(x => x.id !== b.id))}
-                                className="text-slate-500 hover:text-red-400 transition cursor-pointer"
-                            >
-                                <X size={16} />
-                            </button>
+                    ))}
+                    {bookings.length === 0 && (
+                        <div className="rounded-2xl bg-[#1a1630] border border-[#2d2556] p-8 text-center">
+                            <p className="text-slate-500 text-sm">Hozircha buyurtmalar yo'q</p>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    )}
+                </div>
+            )}
 
             {/* Add modal */}
             {showForm && (
@@ -109,7 +174,7 @@ export default function Booking() {
                                 {[1, 2, 3].map(h => (
                                     <button key={h} onClick={() => setForm(f => ({ ...f, hours: h }))}
                                         className={`flex-1 py-2 rounded-xl text-sm font-semibold transition cursor-pointer
-                      ${form.hours === h ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white' : 'bg-[#2d2556] text-slate-300 hover:bg-[#3d3470]'}`}>
+                       ${form.hours === h ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white' : 'bg-[#2d2556] text-slate-300 hover:bg-[#3d3470]'}`}>
                                         {h} soat
                                     </button>
                                 ))}

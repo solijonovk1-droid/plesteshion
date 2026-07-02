@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Briefcase, UserPlus, Shield, Clock, Phone, Mail, MoreHorizontal, Trash2, DollarSign, History, Plus } from 'lucide-react'
 
-export default function Employer({ staff, setStaff, expenses, setExpenses }) {
+export default function Employer({ staff, addStaff, removeStaff, expenses, addExpense }) {
     const [showForm, setShowForm] = useState(false)
     const [showExpenseModal, setShowExpenseModal] = useState(null) // staffId
     const [expenseForm, setExpenseForm] = useState({ amount: '', reason: 'Obed uchun' })
@@ -9,28 +9,31 @@ export default function Employer({ staff, setStaff, expenses, setExpenses }) {
 
     const handleAdd = () => {
         if (!form.name || !form.phone) return
-        setStaff(prev => [...prev, { ...form, id: Date.now(), status: 'Ishda', email: form.name.toLowerCase().replace(' ', '.') + '@psclub.uz' }])
+        addStaff({
+            name: form.name,
+            role: form.role,
+            phone: form.phone
+        })
         setForm({ name: '', role: 'Operator', phone: '' })
         setShowForm(false)
     }
 
     const handleAddExpense = () => {
         if (!expenseForm.amount) return
-        const newExpense = {
-            id: Date.now(),
+        const staffMember = staff.find(s => s.id === showExpenseModal)
+        addExpense({
             staffId: showExpenseModal,
-            staffName: staff.find(s => s.id === showExpenseModal)?.name,
+            staffName: staffMember ? staffMember.name : "Noma'lum",
             amount: Number(expenseForm.amount),
             reason: expenseForm.reason,
             date: new Date().toLocaleString('uz-UZ')
-        }
-        setExpenses(prev => [newExpense, ...prev])
+        })
         setExpenseForm({ amount: '', reason: 'Obed uchun' })
         setShowExpenseModal(null)
     }
 
     const getStaffExpenses = (id) => {
-        return expenses.filter(e => e.staffId === id).reduce((sum, e) => sum + e.amount, 0)
+        return expenses.filter(e => e.staff_id === id || e.staffId === id).reduce((sum, e) => sum + e.amount, 0)
     }
 
     return (
@@ -55,7 +58,7 @@ export default function Employer({ staff, setStaff, expenses, setExpenses }) {
                     <div key={s.id} className="rounded-2xl bg-[#1a1630] border border-[#2d2556] p-5 flex items-center justify-between hover:border-violet-500/30 transition-all group">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#2d2556] to-[#1a1630] border border-[#3d3470] flex items-center justify-center text-violet-400 font-bold group-hover:from-violet-600 group-hover:to-indigo-600 group-hover:text-white transition-all duration-300">
-                                {s.name[0]}
+                                {s.name ? s.name[0].toUpperCase() : 'X'}
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
@@ -92,7 +95,7 @@ export default function Employer({ staff, setStaff, expenses, setExpenses }) {
                                 </div>
                                 <p className="text-slate-500 text-[10px] mt-0.5 font-mono">ID: {s.id.toString().slice(-4)}</p>
                             </div>
-                            <button onClick={() => setStaff(prev => prev.filter(x => x.id !== s.id))} className="p-2 rounded-lg bg-red-900/10 text-red-500/50 hover:text-red-500 hover:bg-red-900/20 transition cursor-pointer">
+                            <button onClick={() => removeStaff(s.id)} className="p-2 rounded-lg bg-red-900/10 text-red-500/50 hover:text-red-500 hover:bg-red-900/20 transition cursor-pointer">
                                 <Trash2 size={16} />
                             </button>
                         </div>
@@ -118,9 +121,9 @@ export default function Employer({ staff, setStaff, expenses, setExpenses }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#2d2556]">
-                                {expenses.slice(0, 5).map(e => (
+                                {expenses.slice(0, 10).map(e => (
                                     <tr key={e.id} className="hover:bg-[#221c3d] transition">
-                                        <td className="px-6 py-4 text-sm text-white font-medium">{e.staffName}</td>
+                                        <td className="px-6 py-4 text-sm text-white font-medium">{e.staff_name || e.staffName}</td>
                                         <td className="px-6 py-4 text-xs text-slate-500 font-mono">{e.date}</td>
                                         <td className="px-6 py-4 text-xs text-slate-400">{e.reason}</td>
                                         <td className="px-6 py-4 text-sm text-rose-400 font-bold text-right">{e.amount.toLocaleString()} so'm</td>

@@ -1,9 +1,7 @@
 import { useState } from 'react'
-import { Save, Store, Clock, DollarSign, Wifi, Bell } from 'lucide-react'
+import { Save, Store, Clock, DollarSign, Bell, Trash2, PlusCircle } from 'lucide-react'
 
-import { Trash2, PlusCircle } from 'lucide-react'
-
-export default function Settings({ menuItems, setMenuItems }) {
+export default function Settings({ menuItems, addMenuItem, removeMenuItem }) {
     const [newProduct, setNewProduct] = useState({ name: '', price: '' })
     const [settings, setSettings] = useState({
         clubName: 'ProPlay PlayStation Club',
@@ -140,7 +138,7 @@ export default function Settings({ menuItems, setMenuItems }) {
                             type="button"
                             onClick={() => {
                                 if (!newProduct.name || !newProduct.price) return
-                                setMenuItems(prev => [...prev, { id: Date.now(), name: newProduct.name, price: Number(newProduct.price) }])
+                                addMenuItem({ name: newProduct.name, price: Number(newProduct.price) })
                                 setNewProduct({ name: '', price: '' })
                             }}
                             className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer"
@@ -159,7 +157,7 @@ export default function Settings({ menuItems, setMenuItems }) {
                                 </div>
                                 <button 
                                     type="button"
-                                    onClick={() => setMenuItems(prev => prev.filter(i => i.id !== item.id))}
+                                    onClick={() => removeMenuItem(item.id)}
                                     className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
                                 >
                                     <Trash2 size={16} />

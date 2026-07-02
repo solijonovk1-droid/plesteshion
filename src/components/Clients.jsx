@@ -1,24 +1,63 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { User, Phone, Trophy, Search, Plus, X } from 'lucide-react'
-
-const INITIAL_CLIENTS = []
+import { supabase } from '../lib/supabase'
 
 export default function Clients() {
-    const [clients, setClients] = useState(INITIAL_CLIENTS)
+    const [clients, setClients] = useState([])
     const [search, setSearch] = useState('')
     const [showForm, setShowForm] = useState(false)
     const [form, setForm] = useState({ name: '', phone: '' })
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        fetchClients()
+    }, [])
+
+    const fetchClients = async () => {
+        setLoading(true)
+        const { data, error } = await supabase
+            .from('clients')
+            .select('*')
+            .order('id', { ascending: false })
+        if (data) {
+            setClients(data)
+        }
+        setLoading(false)
+    }
 
     const filtered = clients.filter(c =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.phone.includes(search)
+        (c.name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (c.phone || '').includes(search)
     )
 
-    const handleAdd = () => {
+    const handleAdd = async () => {
         if (!form.name || !form.phone) return
-        setClients(prev => [...prev, { ...form, id: Date.now(), sessions: 0, total: 0 }])
+        const newClient = {
+            name: form.name,
+            phone: form.phone,
+            sessions_count: 0,
+            total_spent: 0
+        }
+        const { data, error } = await supabase
+            .from('clients')
+            .insert([newClient])
+            .select()
+        
+        if (data) {
+            setClients(prev => [data[0], ...prev])
+        }
         setForm({ name: '', phone: '' })
         setShowForm(false)
+    }
+
+    const handleDelete = async (id) => {
+        const { error } = await supabase
+            .from('clients')
+            .delete()
+            .eq('id', id)
+        if (!error) {
+            setClients(prev => prev.filter(x => x.id !== id))
+        }
     }
 
     return (
@@ -48,43 +87,50 @@ export default function Clients() {
             </div>
 
             {/* List */}
-            <div className="space-y-3">
-                {filtered.map((c, i) => (
-                    <div key={c.id} className="rounded-2xl bg-[#1a1630] border border-[#2d2556] p-5 flex items-center gap-4 hover:border-violet-500/40 transition">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center text-white font-bold text-base flex-shrink-0">
-                            {c.name[0]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                                <p className="text-white font-semibold truncate">{c.name}</p>
-                                {c.sessions >= 30 && (
-                                    <span className="flex items-center gap-1 text-xs bg-amber-900/40 text-amber-400 border border-amber-700/40 px-2 py-0.5 rounded-full">
-                                        <Trophy size={10} /> VIP
-                                    </span>
-                                )}
+            {loading ? (
+                <div className="text-center py-10">
+                    <div className="w-8 h-8 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    <p className="text-slate-400 text-xs">Yuklanmoqda...</p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {filtered.map((c) => (
+                        <div key={c.id} className="rounded-2xl bg-[#1a1630] border border-[#2d2556] p-5 flex items-center gap-4 hover:border-violet-500/40 transition">
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center text-white font-bold text-base flex-shrink-0">
+                                {c.name ? c.name[0].toUpperCase() : 'U'}
                             </div>
-                            <p className="text-slate-400 text-xs flex items-center gap-1 mt-0.5">
-                                <Phone size={11} /> {c.phone}
-                            </p>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <p className="text-white font-semibold truncate">{c.name}</p>
+                                    {(c.sessions_count || 0) >= 30 && (
+                                        <span className="flex items-center gap-1 text-xs bg-amber-900/40 text-amber-400 border border-amber-700/40 px-2 py-0.5 rounded-full">
+                                            <Trophy size={10} /> VIP
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-slate-400 text-xs flex items-center gap-1 mt-0.5">
+                                    <Phone size={11} /> {c.phone}
+                                </p>
+                            </div>
+                            <div className="text-right flex-shrink-0 mr-4">
+                                <p className="text-violet-300 font-semibold text-sm">{c.sessions_count || 0} sessiya</p>
+                                <p className="text-slate-500 text-xs">{(c.total_spent || 0).toLocaleString('uz-UZ')} so'm</p>
+                            </div>
+                            <button
+                                onClick={() => handleDelete(c.id)}
+                                className="text-slate-600 hover:text-red-400 transition cursor-pointer flex-shrink-0"
+                            >
+                                <X size={15} />
+                            </button>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                            <p className="text-violet-300 font-semibold text-sm">{c.sessions} sessiya</p>
-                            <p className="text-slate-500 text-xs">{c.total.toLocaleString()} so'm</p>
+                    ))}
+                    {filtered.length === 0 && (
+                        <div className="rounded-2xl bg-[#1a1630] border border-[#2d2556] p-10 text-center">
+                            <p className="text-slate-500 text-sm">Mijoz topilmadi</p>
                         </div>
-                        <button
-                            onClick={() => setClients(prev => prev.filter(x => x.id !== c.id))}
-                            className="text-slate-600 hover:text-red-400 transition cursor-pointer flex-shrink-0"
-                        >
-                            <X size={15} />
-                        </button>
-                    </div>
-                ))}
-                {filtered.length === 0 && (
-                    <div className="rounded-2xl bg-[#1a1630] border border-[#2d2556] p-10 text-center">
-                        <p className="text-slate-500 text-sm">Mijoz topilmadi</p>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
 
             {showForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">

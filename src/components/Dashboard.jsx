@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Clock, AlertTriangle, Play, DoorOpen, Tv, Users, Activity, Plus } from 'lucide-react'
 
-// ─── Initial data ────────────────────────────────────────────────────────────
-// Endi xonalar App.jsx dan keladi
-
 function formatTime(seconds) {
     if (seconds <= 0) return '00:00'
     const m = Math.floor(seconds / 60)
@@ -15,29 +12,21 @@ function formatMoney(num) {
     return num.toLocaleString('uz-UZ') + " so'm"
 }
 
-// ─── Menu Items ──────────────────────────────────────────────────────────────
-// Endi App.jsx dan keladi
-
-// ─── Timer hook ───────────────────────────────────────────────────────────
-function useTimer(countUp = false) {
+// ─── Timer hook ───────────────────────────────────────────────
+function useTimer() {
     const [, setTick] = useState(0)
-
     useEffect(() => {
-        const interval = setInterval(() => {
-            setTick(t => t + 1)
-        }, 1000)
+        const interval = setInterval(() => setTick(t => t + 1), 1000)
         return () => clearInterval(interval)
     }, [])
-
     return Date.now()
 }
 
-// ─── Active Room Card ─────────────────────────────────────────────────────────
+// ─── Active Room Card ─────────────────────────────────────────────
 function ActiveRoomCard({ room, onStop, onAddOrder }) {
     const now = useTimer()
     const isOchiq = room.isOpen;
     
-    // Vaqtni hisoblash
     const diffInSeconds = Math.floor((now - room.startTime) / 1000)
     const timeValue = isOchiq 
         ? diffInSeconds 
@@ -55,8 +44,7 @@ function ActiveRoomCard({ room, onStop, onAddOrder }) {
     const totalCurrentCost = roomCost + ordersCost;
 
     return (
-        <div
-            className={`relative rounded-2xl p-5 border transition-all duration-300
+        <div className={`relative rounded-2xl p-5 border transition-all duration-300
         ${isOverdue
                     ? 'bg-red-950/40 border-red-500 overdue-card'
                     : isWarning
@@ -64,7 +52,6 @@ function ActiveRoomCard({ room, onStop, onAddOrder }) {
                         : isOchiq ? 'bg-blue-950/20 border-blue-900/50' : 'bg-[#1a1630] border-[#2d2556]'
                 }`}
         >
-            {/* Overdue Badge */}
             {isOverdue && (
                 <div className="absolute -top-3 left-4 flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
                     <AlertTriangle size={12} />
@@ -94,7 +81,6 @@ function ActiveRoomCard({ room, onStop, onAddOrder }) {
                 </div>
             </div>
 
-            {/* Progress bar */}
             {!isOchiq && (
                 <div className="w-full bg-[#0f0c1e] rounded-full h-1.5 mb-4">
                     <div
@@ -105,7 +91,6 @@ function ActiveRoomCard({ room, onStop, onAddOrder }) {
                 </div>
             )}
             
-            {/* Orders list if any */}
             {(room.orders && room.orders.length > 0) && (
                 <div className="mb-4 bg-[#0f0c1e] rounded-lg p-3 border border-[#2d2556]">
                     <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-2">Buyurtmalar</p>
@@ -120,7 +105,6 @@ function ActiveRoomCard({ room, onStop, onAddOrder }) {
                 </div>
             )}
             
-            {/* Open time current cost */}
             <div className="flex items-center justify-between mb-4 mt-2 bg-indigo-950/30 px-3 py-2 rounded-lg border border-indigo-900/40">
                 <div className="flex flex-col">
                     <span className="text-indigo-300/70 text-[10px] uppercase font-bold">Jami hisob</span>
@@ -145,7 +129,7 @@ function ActiveRoomCard({ room, onStop, onAddOrder }) {
     )
 }
 
-// ─── Free Room Card ───────────────────────────────────────────────────────────
+// ─── Free Room Card ───────────────────────────────────────────────
 function FreeRoomCard({ room, onStart }) {
     return (
         <div className="rounded-2xl p-5 bg-[#1a1630] border border-[#2d2556] hover:border-violet-500/50 transition-all duration-200">
@@ -181,7 +165,7 @@ function FreeRoomCard({ room, onStart }) {
     )
 }
 
-// ─── Start Room Modal ─────────────────────────────────────────────────────────
+// ─── Start Room Modal ─────────────────────────────────────────────
 function StartModal({ room, onConfirm, onClose }) {
     const [client, setClient] = useState('')
     const [hours, setHours] = useState(null)
@@ -241,7 +225,7 @@ function StartModal({ room, onConfirm, onClose }) {
     )
 }
 
-// ─── Receipt Modal ────────────────────────────────────────────────────────────
+// ─── Receipt Modal ────────────────────────────────────────────────
 function ReceiptModal({ data, onConfirm, onClose }) {
     if (!data) return null;
     
@@ -303,7 +287,7 @@ function ReceiptModal({ data, onConfirm, onClose }) {
     )
 }
 
-// ─── Add Order Modal ──────────────────────────────────────────────────────────
+// ─── Add Order Modal ──────────────────────────────────────────────
 function AddOrderModal({ onAdd, onClose, menuItems }) {
     const [selectedItem, setSelectedItem] = useState(menuItems[0] || null)
     const [quantity, setQuantity] = useState(1)
@@ -369,7 +353,7 @@ function AddOrderModal({ onAdd, onClose, menuItems }) {
     )
 }
 
-// ─── Add Room Modal ────────────────────────────────────────────────────────────
+// ─── Add Room Modal ────────────────────────────────────────────────
 function AddRoomModal({ onAdd, onClose }) {
     const [name, setName] = useState('')
     const [type, setType] = useState('Oddiy')
@@ -379,13 +363,7 @@ function AddRoomModal({ onAdd, onClose }) {
     const handleSubmit = (e) => {
         e.preventDefault()
         if (!name) return
-        onAdd({
-            id: Date.now(),
-            name,
-            type,
-            price: Number(price),
-            capacity: Number(capacity)
-        })
+        onAdd({ name, type, price: Number(price), capacity: Number(capacity) })
     }
 
     return (
@@ -424,46 +402,33 @@ function AddRoomModal({ onAdd, onClose }) {
     )
 }
 
-// ─── Dashboard Page ───────────────────────────────────────────────────────────
-export default function Dashboard({ freeRooms, setFreeRooms, activeRooms, setActiveRooms, setActivePage, menuItems }) {
+// ─── Dashboard Page ───────────────────────────────────────────────
+export default function Dashboard({ 
+    freeRooms, setFreeRooms, addFreeRoom, removeFreeRoom,
+    activeRooms, setActiveRooms, startSession, stopSession,
+    addOrderToSession, savePayment, setActivePage, menuItems 
+}) {
     const [modalRoom, setModalRoom] = useState(null)
     const [receiptData, setReceiptData] = useState(null)
-    const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'free' | 'busy' | 'overdue'
+    const [activeFilter, setActiveFilter] = useState('all')
     const [showAddRoom, setShowAddRoom] = useState(false)
     const [orderModalRoomId, setOrderModalRoomId] = useState(null)
 
     const handleAddRoom = (newRoom) => {
-        setFreeRooms(prev => [...prev, newRoom])
+        addFreeRoom(newRoom)
         setShowAddRoom(false)
     }
 
     const handleStart = (room) => setModalRoom(room)
 
     const handleConfirm = (client, hours) => {
-        const isOchiq = hours === null;
-        const secs = isOchiq ? 0 : hours * 3600;
-        const now = Date.now();
-        
-        setActiveRooms(prev => [...prev, {
-            id: modalRoom.id,
-            name: modalRoom.name,
-            type: modalRoom.type,
-            price: modalRoom.price,
-            client: client || 'Noma\'lum',
-            startTime: now,
-            endTime: isOchiq ? null : now + (secs * 1000),
-            totalSeconds: isOchiq ? 0 : secs,
-            isOpen: isOchiq,
-            orders: []
-        }])
-        setFreeRooms(prev => prev.filter(r => r.id !== modalRoom.id))
+        startSession(modalRoom, client, hours)
         setModalRoom(null)
     }
 
     const handleStop = (id, totalCost) => {
         const stopped = activeRooms.find(r => r.id === id)
         if (stopped) {
-            // Hisoblash
             const now = Date.now();
             const diffInSeconds = Math.floor((now - stopped.startTime) / 1000)
             const timeValue = stopped.isOpen 
@@ -479,7 +444,8 @@ export default function Dashboard({ freeRooms, setFreeRooms, activeRooms, setAct
                 client: stopped.client, 
                 roomCost: roomCost,
                 orders: stopped.orders || [],
-                roomName: stopped.name 
+                roomName: stopped.name,
+                roomData: stopped
             })
         }
     }
@@ -489,44 +455,27 @@ export default function Dashboard({ freeRooms, setFreeRooms, activeRooms, setAct
     }
 
     const confirmOrder = (item) => {
-        setActiveRooms(prev => prev.map(room => {
-            if (room.id === orderModalRoomId) {
-                const existingOrderIdx = (room.orders || []).findIndex(o => o.id === item.id)
-                let newOrders = [...(room.orders || [])]
-                if (existingOrderIdx > -1) {
-                    newOrders[existingOrderIdx] = {
-                        ...newOrders[existingOrderIdx],
-                        quantity: newOrders[existingOrderIdx].quantity + item.quantity
-                    }
-                } else {
-                    newOrders.push(item)
-                }
-                return { ...room, orders: newOrders }
-            }
-            return room
-        }))
+        addOrderToSession(orderModalRoomId, item)
         setOrderModalRoomId(null)
     }
 
-    const confirmPayment = () => {
+    const confirmPayment = async () => {
         if (!receiptData) return;
-        const id = receiptData.roomId;
-        const stopped = activeRooms.find(r => r.id === id)
-        if (stopped) {
-            setFreeRooms(prev => [...prev, {
-                id: stopped.id,
-                name: stopped.name,
-                type: stopped.type,
-                price: stopped.price,
-                capacity: stopped.type === 'VIP' ? 4 : 2,
-            }].sort((a,b) => a.id - b.id))
-            setActiveRooms(prev => prev.filter(r => r.id !== id))
-        }
+        const ordersCost = (receiptData.orders || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        // To'lovni Supabase ga saqlash
+        await savePayment({
+            room_name: receiptData.roomName,
+            client: receiptData.client,
+            room_cost: receiptData.roomCost,
+            orders_cost: ordersCost,
+            total: receiptData.roomCost + ordersCost
+        })
+
+        // Seansni tugatish va xonani qaytarish
+        await stopSession(receiptData.roomId, receiptData.roomData)
         setReceiptData(null)
     }
-
-    const overdueCount = activeRooms.filter(r => r.secondsLeft <= 0).length
-    const warnCount = activeRooms.filter(r => r.secondsLeft > 0 && r.secondsLeft <= 300).length
 
     return (
         <div className="p-6 min-h-screen">
@@ -537,21 +486,6 @@ export default function Dashboard({ freeRooms, setFreeRooms, activeRooms, setAct
                     <p className="text-slate-400 text-sm mt-1">PlayStation Klub – Boshqaruv paneli</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {overdueCount > 0 && (
-                        <button 
-                            onClick={() => setActiveFilter('overdue')}
-                            className={`flex items-center gap-2 bg-red-900/40 border border-red-600/50 text-red-400 text-sm font-semibold px-4 py-2 rounded-xl cursor-pointer hover:bg-red-900/60 transition-all ${activeFilter === 'overdue' ? 'ring-2 ring-red-500' : ''}`}
-                        >
-                            <AlertTriangle size={15} />
-                            {overdueCount} xona vaqti o'tdi
-                        </button>
-                    )}
-                    {warnCount > 0 && (
-                        <div className="flex items-center gap-2 bg-amber-900/40 border border-amber-600/50 text-amber-400 text-sm font-semibold px-4 py-2 rounded-xl warn-blink">
-                            <Clock size={15} />
-                            {warnCount} xona tugayapti
-                        </div>
-                    )}
                     <div className="flex items-center gap-2 bg-[#1a1630] border border-[#2d2556] text-slate-400 text-sm px-4 py-2 rounded-xl">
                         <Activity size={15} className="text-emerald-400" />
                         {activeRooms.length} faol
@@ -567,7 +501,7 @@ export default function Dashboard({ freeRooms, setFreeRooms, activeRooms, setAct
                 {[
                     { id: 'statistics', label: 'Statistika', value: '→', color: 'from-violet-600 to-indigo-600', isAction: true },
                     { id: 'all', label: 'Jami xonalar', value: freeRooms.length + activeRooms.length, color: 'from-blue-600 to-indigo-600' },
-                    { id: 'free', label: 'Bo\'sh xonalar', value: freeRooms.length, color: 'from-emerald-600 to-teal-600' },
+                    { id: 'free', label: "Bo'sh xonalar", value: freeRooms.length, color: 'from-emerald-600 to-teal-600' },
                     { id: 'busy', label: 'Band xonalar', value: activeRooms.length, color: 'from-rose-600 to-pink-600' },
                 ].map(stat => (
                     <div 

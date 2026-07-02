@@ -1,4 +1,4 @@
-import { LayoutDashboard, CalendarCheck, Users, Settings, Gamepad2, LogOut, BarChart3, Briefcase } from 'lucide-react'
+import { LayoutDashboard, CalendarCheck, Users, Settings, Gamepad2, LogOut, BarChart3, Briefcase, Zap } from 'lucide-react'
 
 const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -6,6 +6,7 @@ const navItems = [
     { id: 'statistics', label: 'Statistika', icon: BarChart3 },
     { id: 'clients', label: 'Mijozlar', icon: Users },
     { id: 'employer', label: 'Xodimlar', icon: Briefcase },
+    { id: 'utilities', label: 'Kommunal', icon: Zap },
     { id: 'settings', label: 'Sozlamalar', icon: Settings },
 ]
 
