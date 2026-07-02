@@ -29,25 +29,23 @@ export default function App() {
   // Loading holati
   const [loading, setLoading] = useState(true)
 
-  // ─── Supabase dan ma'lumotlarni yuklash ───────────────────────
+  // ─── Auth holati ──────────────────────────────────────────────
   useEffect(() => {
-    // Sessionni tekshirish
+    // Birinchi session tekshiruvi
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
+      const u = session?.user ?? null
+      setUser(u)
+      if (u) {
         loadAllData()
       } else {
         setLoading(false)
       }
     })
 
-    // Auth holatini eshitish
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        loadAllData()
-      } else {
-        // Log out bo'lganda statelarni tozalash
+    // Auth o'zgarishlarini kuzatish (faqat logout uchun)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
         setFreeRooms([])
         setActiveRooms([])
         setMenuItems([])
@@ -63,14 +61,17 @@ export default function App() {
   const loadAllData = async () => {
     setLoading(true)
     try {
-      // Xonalar
-      const { data: roomsData } = await supabase.from('rooms').select('*').order('id')
-      if (roomsData) setFreeRooms(roomsData)
+      const [roomsRes, sessionsRes, menuRes, staffRes, expRes] = await Promise.allSettled([
+        supabase.from('rooms').select('*').order('id'),
+        supabase.from('sessions').select('*').order('id'),
+        supabase.from('menu_items').select('*').order('id'),
+        supabase.from('staff').select('*').order('id'),
+        supabase.from('expenses').select('*').order('created_at', { ascending: false })
+      ])
 
-      // Faol seanslar
-      const { data: sessionsData } = await supabase.from('sessions').select('*').order('id')
-      if (sessionsData) {
-        setActiveRooms(sessionsData.map(s => ({
+      if (roomsRes.value?.data) setFreeRooms(roomsRes.value.data)
+      if (sessionsRes.value?.data) {
+        setActiveRooms(sessionsRes.value.data.map(s => ({
           id: s.id,
           name: s.room_name,
           type: s.room_type,
@@ -84,23 +85,15 @@ export default function App() {
           roomId: s.room_id
         })))
       }
-
-      // Menyu
-      const { data: menuData } = await supabase.from('menu_items').select('*').order('id')
-      if (menuData) setMenuItems(menuData)
-
-      // Xodimlar
-      const { data: staffData } = await supabase.from('staff').select('*').order('id')
-      if (staffData) setStaff(staffData)
-
-      // Xarajatlar
-      const { data: expData } = await supabase.from('expenses').select('*').order('created_at', { ascending: false })
-      if (expData) setExpenses(expData)
+      if (menuRes.value?.data) setMenuItems(menuRes.value.data)
+      if (staffRes.value?.data) setStaff(staffRes.value.data)
+      if (expRes.value?.data) setExpenses(expRes.value.data)
 
     } catch (err) {
       console.error('Supabase yuklash xatosi:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   // ─── Xonalar uchun CRUD ───────────────────────────────────────
@@ -324,7 +317,14 @@ export default function App() {
   }
 
   if (!user) {
-    return <Login onLoginSuccess={(u) => setUser(u)} />
+    return (
+      <Login
+        onLoginSuccess={(u) => {
+          setUser(u)
+          loadAllData()
+        }}
+      />
+    )
   }
 
   return (
