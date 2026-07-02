@@ -32,8 +32,14 @@ export default function Login({ onLoginSuccess }) {
           password
         })
         if (error) throw error
-        alert("Siz muvaffaqiyatli ro'yxatdan o'tdingiz. Tizimga kora olasiz!")
-        setIsLoginTab(true)
+        
+        if (data?.session) {
+          // Agar email tasdiqlash o'chirilgan bo'lsa, avtomatik kirish
+          onLoginSuccess(data.user)
+        } else {
+          setErrorMsg("Ro'yxatdan o'tdingiz! Emailingizga tasdiqlash havolasi yuborildi. Iltimos pochtangizni tasdiqlang yoki Supabase-da 'Confirm email' sozlamasini o'chiring.")
+          setIsLoginTab(true)
+        }
       }
     } catch (err) {
       setErrorMsg(err.message || "Xatolik yuz berdi")
