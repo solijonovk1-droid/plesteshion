@@ -1,18 +1,36 @@
 import { useState } from 'react'
-import { Briefcase, UserPlus, Shield, Clock, Phone, Mail, MoreHorizontal, Trash2 } from 'lucide-react'
+import { Briefcase, UserPlus, Shield, Clock, Phone, Mail, MoreHorizontal, Trash2, DollarSign, History, Plus } from 'lucide-react'
 
-const INITIAL_STAFF = []
-
-export default function Employer() {
-    const [staff, setStaff] = useState(INITIAL_STAFF)
+export default function Employer({ staff, setStaff, expenses, setExpenses }) {
     const [showForm, setShowForm] = useState(false)
+    const [showExpenseModal, setShowExpenseModal] = useState(null) // staffId
+    const [expenseForm, setExpenseForm] = useState({ amount: '', reason: 'Obed uchun' })
     const [form, setForm] = useState({ name: '', role: 'Operator', phone: '' })
 
     const handleAdd = () => {
         if (!form.name || !form.phone) return
-        setStaff(prev => [...prev, { ...form, id: Date.now(), status: 'Dam olmoqda', email: form.name.toLowerCase().replace(' ', '.') + '@psclub.uz' }])
+        setStaff(prev => [...prev, { ...form, id: Date.now(), status: 'Ishda', email: form.name.toLowerCase().replace(' ', '.') + '@psclub.uz' }])
         setForm({ name: '', role: 'Operator', phone: '' })
         setShowForm(false)
+    }
+
+    const handleAddExpense = () => {
+        if (!expenseForm.amount) return
+        const newExpense = {
+            id: Date.now(),
+            staffId: showExpenseModal,
+            staffName: staff.find(s => s.id === showExpenseModal)?.name,
+            amount: Number(expenseForm.amount),
+            reason: expenseForm.reason,
+            date: new Date().toLocaleString('uz-UZ')
+        }
+        setExpenses(prev => [newExpense, ...prev])
+        setExpenseForm({ amount: '', reason: 'Obed uchun' })
+        setShowExpenseModal(null)
+    }
+
+    const getStaffExpenses = (id) => {
+        return expenses.filter(e => e.staffId === id).reduce((sum, e) => sum + e.amount, 0)
     }
 
     return (
@@ -31,7 +49,9 @@ export default function Employer() {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-                {staff.map(s => (
+                {staff.map(s => {
+                    const totalExp = getStaffExpenses(s.id)
+                    return (
                     <div key={s.id} className="rounded-2xl bg-[#1a1630] border border-[#2d2556] p-5 flex items-center justify-between hover:border-violet-500/30 transition-all group">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#2d2556] to-[#1a1630] border border-[#3d3470] flex items-center justify-center text-violet-400 font-bold group-hover:from-violet-600 group-hover:to-indigo-600 group-hover:text-white transition-all duration-300">
@@ -49,31 +69,68 @@ export default function Employer() {
                                     <p className="text-slate-500 text-xs flex items-center gap-1">
                                         <Phone size={10} /> {s.phone}
                                     </p>
-                                    <p className="text-slate-500 text-xs flex items-center gap-1">
-                                        <Mail size={10} /> {s.email}
-                                    </p>
+                                    {totalExp > 0 && (
+                                        <p className="text-rose-400 text-xs font-bold flex items-center gap-1">
+                                            <DollarSign size={10} /> {totalExp.toLocaleString()} so'm olingan
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-6">
+                            <button 
+                                onClick={() => setShowExpenseModal(s.id)}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-900/20 text-emerald-400 text-xs font-bold border border-emerald-800/30 hover:bg-emerald-900/40 transition cursor-pointer"
+                            >
+                                <Plus size={12} /> Pul berish
+                            </button>
                             <div className="text-right">
                                 <div className="flex items-center justify-end gap-1.5">
                                     <span className={`w-2 h-2 rounded-full ${s.status === 'Ishda' ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
                                     <p className={`text-xs font-medium ${s.status === 'Ishda' ? 'text-emerald-400' : 'text-slate-400'}`}>{s.status}</p>
                                 </div>
-                                <p className="text-slate-500 text-[10px] mt-0.5">So'nggi faollik: 2 soat avval</p>
+                                <p className="text-slate-500 text-[10px] mt-0.5 font-mono">ID: {s.id.toString().slice(-4)}</p>
                             </div>
-                            <button className="p-2 rounded-lg bg-[#2d2556] text-slate-400 hover:text-white transition cursor-pointer">
-                                <MoreHorizontal size={16} />
-                            </button>
                             <button onClick={() => setStaff(prev => prev.filter(x => x.id !== s.id))} className="p-2 rounded-lg bg-red-900/10 text-red-500/50 hover:text-red-500 hover:bg-red-900/20 transition cursor-pointer">
                                 <Trash2 size={16} />
                             </button>
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
+
+            {/* Expenses History */}
+            {expenses.length > 0 && (
+                <div className="mt-12">
+                    <h2 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
+                        <History size={18} className="text-violet-400" />
+                        Xarajatlar tarixi (Avanslar)
+                    </h2>
+                    <div className="rounded-2xl bg-[#1a1630] border border-[#2d2556] overflow-hidden">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-[#0f0c1e] border-b border-[#2d2556]">
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Xodim</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Sana</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Sabab</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase text-right">Summa</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#2d2556]">
+                                {expenses.slice(0, 5).map(e => (
+                                    <tr key={e.id} className="hover:bg-[#221c3d] transition">
+                                        <td className="px-6 py-4 text-sm text-white font-medium">{e.staffName}</td>
+                                        <td className="px-6 py-4 text-xs text-slate-500 font-mono">{e.date}</td>
+                                        <td className="px-6 py-4 text-xs text-slate-400">{e.reason}</td>
+                                        <td className="px-6 py-4 text-sm text-rose-400 font-bold text-right">{e.amount.toLocaleString()} so'm</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             {showForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -107,6 +164,41 @@ export default function Employer() {
                     </div>
                 </div>
             )}
+
+            {/* Expense Modal */}
+            {showExpenseModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                    <div className="bg-[#1a1630] border border-[#2d2556] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                        <h3 className="text-white font-bold text-lg mb-1">Pul berish (Avans)</h3>
+                        <p className="text-violet-400 text-xs mb-5">{staff.find(s => s.id === showExpenseModal)?.name}</p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-slate-400 text-xs mb-1">Summa (so'm)</label>
+                                <input 
+                                    type="number" 
+                                    value={expenseForm.amount} 
+                                    onChange={e => setExpenseForm(f => ({ ...f, amount: e.target.value }))}
+                                    placeholder="Masalan: 20000" 
+                                    className="w-full bg-[#0f0c1e] border border-[#2d2556] text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-violet-500 transition" 
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-slate-400 text-xs mb-1">Sabab</label>
+                                <input 
+                                    value={expenseForm.reason} 
+                                    onChange={e => setExpenseForm(f => ({ ...f, reason: e.target.value }))}
+                                    className="w-full bg-[#0f0c1e] border border-[#2d2556] text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-violet-500 transition" 
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setShowExpenseModal(null)} className="flex-1 py-2.5 rounded-xl bg-[#2d2556] text-slate-300 text-sm hover:bg-[#3d3470] transition cursor-pointer">Bekor</button>
+                            <button onClick={handleAddExpense} className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-semibold hover:from-emerald-500 hover:to-teal-500 transition shadow-lg shadow-emerald-900/40 cursor-pointer">Saqlash</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     )
 }

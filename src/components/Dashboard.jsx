@@ -15,6 +15,9 @@ function formatMoney(num) {
     return num.toLocaleString('uz-UZ') + " so'm"
 }
 
+// ─── Menu Items ──────────────────────────────────────────────────────────────
+// Endi App.jsx dan keladi
+
 // ─── Timer hook ───────────────────────────────────────────────────────────
 function useTimer(countUp = false) {
     const [, setTick] = useState(0)
@@ -30,7 +33,7 @@ function useTimer(countUp = false) {
 }
 
 // ─── Active Room Card ─────────────────────────────────────────────────────────
-function ActiveRoomCard({ room, onStop }) {
+function ActiveRoomCard({ room, onStop, onAddOrder }) {
     const now = useTimer()
     const isOchiq = room.isOpen;
     
@@ -44,9 +47,12 @@ function ActiveRoomCard({ room, onStop }) {
     const overdueSeconds = isOverdue ? Math.floor((now - room.endTime) / 1000) : 0;
     const isWarning = !isOchiq && !isOverdue && timeValue <= 300;
     
-    const currentCost = isOchiq 
+    const roomCost = isOchiq 
         ? Math.floor((timeValue / 3600) * room.price) 
         : Math.floor((room.totalSeconds / 3600) * room.price);
+    
+    const ordersCost = (room.orders || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const totalCurrentCost = roomCost + ordersCost;
 
     return (
         <div
@@ -99,16 +105,38 @@ function ActiveRoomCard({ room, onStop }) {
                 </div>
             )}
             
-            {/* Open time current cost */}
-            {isOchiq && (
-                <div className="flex items-center justify-between mb-4 mt-2 bg-blue-950/30 px-3 py-2 rounded-lg border border-blue-900/40">
-                    <span className="text-blue-300/70 text-xs font-medium">Joriy hisob:</span>
-                    <span className="font-bold text-blue-400">{formatMoney(currentCost)}</span>
+            {/* Orders list if any */}
+            {(room.orders && room.orders.length > 0) && (
+                <div className="mb-4 bg-[#0f0c1e] rounded-lg p-3 border border-[#2d2556]">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-2">Buyurtmalar</p>
+                    <div className="space-y-1.5">
+                        {room.orders.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-xs">
+                                <span className="text-slate-300">{item.name} <span className="text-slate-500">x{item.quantity}</span></span>
+                                <span className="text-slate-400 font-mono">{formatMoney(item.price * item.quantity)}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
+            
+            {/* Open time current cost */}
+            <div className="flex items-center justify-between mb-4 mt-2 bg-indigo-950/30 px-3 py-2 rounded-lg border border-indigo-900/40">
+                <div className="flex flex-col">
+                    <span className="text-indigo-300/70 text-[10px] uppercase font-bold">Jami hisob</span>
+                    <span className="font-bold text-indigo-400 text-lg leading-tight">{formatMoney(totalCurrentCost)}</span>
+                </div>
+                <button 
+                    onClick={() => onAddOrder(room.id)}
+                    className="p-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 transition-colors border border-indigo-500/20"
+                    title="Narsa qo'shish"
+                >
+                    <Plus size={16} />
+                </button>
+            </div>
 
             <button
-                onClick={() => onStop(room.id, currentCost)}
+                onClick={() => onStop(room.id, totalCurrentCost)}
                 className="w-full py-2 rounded-xl bg-[#2d2556] hover:bg-red-900/50 text-slate-300 hover:text-red-300 text-sm font-medium transition-all duration-200 border border-[#3d3470] hover:border-red-700 cursor-pointer"
             >
                 Tugatish
@@ -216,30 +244,125 @@ function StartModal({ room, onConfirm, onClose }) {
 // ─── Receipt Modal ────────────────────────────────────────────────────────────
 function ReceiptModal({ data, onConfirm, onClose }) {
     if (!data) return null;
+    
+    const roomCost = data.roomCost || 0;
+    const orders = data.orders || [];
+    const ordersCost = orders.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total = roomCost + ordersCost;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-            <div className="bg-[#1a1630] border border-blue-900/50 rounded-2xl p-8 w-full max-w-sm shadow-2xl shadow-blue-900/40 text-center">
+            <div className="bg-[#1a1630] border border-blue-900/50 rounded-2xl p-8 w-full max-w-sm shadow-2xl shadow-blue-900/40">
                 <div className="w-16 h-16 rounded-full bg-blue-900/30 flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
                     <Tv size={28} className="text-blue-400" />
                 </div>
-                <h3 className="text-white font-bold text-xl mb-1">To'lovni qabul qilish</h3>
-                <p className="text-blue-300 text-sm mb-6">{data.roomName} – {data.client}</p>
+                <h3 className="text-white font-bold text-xl mb-1 text-center">To'lov cheki</h3>
+                <p className="text-blue-300 text-sm mb-6 text-center">{data.roomName} – {data.client}</p>
                 
-                <div className="bg-[#0f0c1e] rounded-xl p-4 mb-6 border border-[#2d2556]">
-                    <p className="text-slate-400 text-xs mb-1">Jami to'lov summasi</p>
-                    <p className="text-3xl font-bold text-white">{formatMoney(data.cost)}</p>
+                <div className="space-y-4 mb-6">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-400">Xona vaqti:</span>
+                        <span className="text-white font-medium">{formatMoney(roomCost)}</span>
+                    </div>
+                    
+                    {orders.length > 0 && (
+                        <div className="pt-2 border-t border-[#2d2556]">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-2">Buyurtmalar</p>
+                            <div className="space-y-1">
+                                {orders.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-300">{item.name} x{item.quantity}</span>
+                                        <span className="text-slate-400">{formatMoney(item.price * item.quantity)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="pt-4 border-t-2 border-dashed border-[#2d2556]">
+                        <div className="flex justify-between items-center">
+                            <span className="text-white font-bold">Jami:</span>
+                            <span className="text-2xl font-bold text-emerald-400">{formatMoney(total)}</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <div className="flex gap-3">
                     <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-[#2d2556] text-slate-300 text-sm font-medium hover:bg-[#3d3470] transition cursor-pointer">
-                        Bekor qilish
+                        Bekor
                     </button>
                     <button
                         onClick={onConfirm}
                         className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:from-blue-500 hover:to-indigo-500 transition shadow-lg shadow-blue-900/40 cursor-pointer"
                     >
-                        Tugatish
+                        To'landi
                     </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─── Add Order Modal ──────────────────────────────────────────────────────────
+function AddOrderModal({ onAdd, onClose, menuItems }) {
+    const [selectedItem, setSelectedItem] = useState(menuItems[0] || null)
+    const [quantity, setQuantity] = useState(1)
+
+    if (!selectedItem && menuItems.length > 0) {
+        setSelectedItem(menuItems[0])
+    }
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="bg-[#1a1630] border border-[#2d2556] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                <h3 className="text-white font-bold text-lg mb-5">Narsa qo'shish</h3>
+                
+                {!selectedItem ? (
+                    <p className="text-slate-400 text-sm mb-6">Mahsulotlar topilmadi. Sozlamalardan qo'shing.</p>
+                ) : (
+                <div className="space-y-4 mb-6">
+                    <div>
+                        <label className="block text-slate-400 text-xs mb-1">Tanlang</label>
+                        <select 
+                            value={selectedItem.id} 
+                            onChange={e => setSelectedItem(menuItems.find(i => i.id === Number(e.target.value)))}
+                            className="w-full bg-[#0f0c1e] border border-[#2d2556] text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-violet-500"
+                        >
+                            {menuItems.map(item => (
+                                <option key={item.id} value={item.id}>{item.name} ({formatMoney(item.price)})</option>
+                            ))}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label className="block text-slate-400 text-xs mb-1">Soni</label>
+                        <div className="flex items-center gap-4">
+                            <button 
+                                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                className="w-10 h-10 rounded-lg bg-[#2d2556] text-white flex items-center justify-center hover:bg-[#3d3470] transition cursor-pointer"
+                            >-</button>
+                            <span className="text-xl font-bold text-white w-8 text-center">{quantity}</span>
+                            <button 
+                                onClick={() => setQuantity(quantity + 1)}
+                                className="w-10 h-10 rounded-lg bg-[#2d2556] text-white flex items-center justify-center hover:bg-[#3d3470] transition cursor-pointer"
+                            >+</button>
+                        </div>
+                    </div>
+                </div>
+                )}
+
+                <div className="flex gap-3">
+                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-[#2d2556] text-slate-300 text-sm font-medium hover:bg-[#3d3470] transition cursor-pointer">
+                        Bekor
+                    </button>
+                    {selectedItem && (
+                    <button
+                        onClick={() => onAdd({ ...selectedItem, quantity })}
+                        className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold hover:from-violet-500 hover:to-indigo-500 transition shadow-lg shadow-violet-900/40 cursor-pointer"
+                    >
+                        Qo'shish
+                    </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -302,11 +425,12 @@ function AddRoomModal({ onAdd, onClose }) {
 }
 
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
-export default function Dashboard({ freeRooms, setFreeRooms, activeRooms, setActiveRooms, setActivePage }) {
+export default function Dashboard({ freeRooms, setFreeRooms, activeRooms, setActiveRooms, setActivePage, menuItems }) {
     const [modalRoom, setModalRoom] = useState(null)
     const [receiptData, setReceiptData] = useState(null)
     const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'free' | 'busy' | 'overdue'
     const [showAddRoom, setShowAddRoom] = useState(false)
+    const [orderModalRoomId, setOrderModalRoomId] = useState(null)
 
     const handleAddRoom = (newRoom) => {
         setFreeRooms(prev => [...prev, newRoom])
@@ -329,17 +453,59 @@ export default function Dashboard({ freeRooms, setFreeRooms, activeRooms, setAct
             startTime: now,
             endTime: isOchiq ? null : now + (secs * 1000),
             totalSeconds: isOchiq ? 0 : secs,
-            isOpen: isOchiq
+            isOpen: isOchiq,
+            orders: []
         }])
         setFreeRooms(prev => prev.filter(r => r.id !== modalRoom.id))
         setModalRoom(null)
     }
 
-    const handleStop = (id, finalCost) => {
+    const handleStop = (id, totalCost) => {
         const stopped = activeRooms.find(r => r.id === id)
         if (stopped) {
-            setReceiptData({ roomId: id, client: stopped.client, cost: finalCost, roomName: stopped.name })
+            // Hisoblash
+            const now = Date.now();
+            const diffInSeconds = Math.floor((now - stopped.startTime) / 1000)
+            const timeValue = stopped.isOpen 
+                ? diffInSeconds 
+                : Math.max(0, Math.floor((stopped.endTime - now) / 1000))
+            
+            const roomCost = stopped.isOpen 
+                ? Math.floor((timeValue / 3600) * stopped.price) 
+                : Math.floor((stopped.totalSeconds / 3600) * stopped.price);
+
+            setReceiptData({ 
+                roomId: id, 
+                client: stopped.client, 
+                roomCost: roomCost,
+                orders: stopped.orders || [],
+                roomName: stopped.name 
+            })
         }
+    }
+
+    const handleAddOrder = (roomId) => {
+        setOrderModalRoomId(roomId)
+    }
+
+    const confirmOrder = (item) => {
+        setActiveRooms(prev => prev.map(room => {
+            if (room.id === orderModalRoomId) {
+                const existingOrderIdx = (room.orders || []).findIndex(o => o.id === item.id)
+                let newOrders = [...(room.orders || [])]
+                if (existingOrderIdx > -1) {
+                    newOrders[existingOrderIdx] = {
+                        ...newOrders[existingOrderIdx],
+                        quantity: newOrders[existingOrderIdx].quantity + item.quantity
+                    }
+                } else {
+                    newOrders.push(item)
+                }
+                return { ...room, orders: newOrders }
+            }
+            return room
+        }))
+        setOrderModalRoomId(null)
     }
 
     const confirmPayment = () => {
@@ -471,7 +637,7 @@ export default function Dashboard({ freeRooms, setFreeRooms, activeRooms, setAct
                             {activeRooms
                                 .filter(r => activeFilter === 'overdue' ? (Date.now() > r.endTime && !r.isOpen) : true)
                                 .map(room => (
-                                <ActiveRoomCard key={room.id} room={room} onStop={handleStop} />
+                                <ActiveRoomCard key={room.id} room={room} onStop={handleStop} onAddOrder={handleAddOrder} />
                             ))}
                         </div>
                     )}
@@ -483,6 +649,13 @@ export default function Dashboard({ freeRooms, setFreeRooms, activeRooms, setAct
             {showAddRoom && <AddRoomModal onAdd={handleAddRoom} onClose={() => setShowAddRoom(false)} />}
             {modalRoom && (
                 <StartModal room={modalRoom} onConfirm={handleConfirm} onClose={() => setModalRoom(null)} />
+            )}
+            {orderModalRoomId && (
+                <AddOrderModal 
+                    onAdd={confirmOrder} 
+                    onClose={() => setOrderModalRoomId(null)} 
+                    menuItems={menuItems}
+                />
             )}
             <ReceiptModal data={receiptData} onConfirm={confirmPayment} onClose={() => setReceiptData(null)} />
         </div>
